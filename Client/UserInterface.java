@@ -156,7 +156,9 @@ class GameComponent extends DrawComponent {
             p = new Point(width - delta.x / 2, (int) (midH - Math.tan(Math.PI / 2.0 - gamma) * midW));
         }
 
-        return p;
+        Point tmpp = new Point(Math.min(width - delta.x / 2, Math.max(p.x, delta.x / 2)), Math.min(height - delta.y / 2, Math.max(p.y, delta.y / 2)));
+
+        return tmpp;
     }
 
     public static java.util.List<String> cardString = Arrays.asList("0", "0", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A");
@@ -212,13 +214,18 @@ class GameComponent extends DrawComponent {
                 Player p = data.players.get(i);
                 //System.out.println("Player #" + i + " " + p);
                 String txt = "$" + p.money + "  ⊙" + p.bet;
-                Point pos = intersectCenter((i + playerNumber - data.myPos) % playerNumber, new Point(200, 200));
+                Point pos = intersectCenter((i + playerNumber - data.myPos) % playerNumber, new Point(200, 86));
                 pos.x -= 10 * txt.length();
+                if (pos.y < this.getHeight() / 2.0 - 60) {
+                    pos = new Point(pos.x, pos.y + 60);
+                } else {
+                    pos = new Point(pos.x, pos.y - 60);
+                }
                 pos.y += 10;
                 g2d.setColor(Color.WHITE);
                 g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 30));
                 g2d.drawString(txt, pos.x, pos.y);
-                pos = intersectCenter((i + playerNumber - data.myPos) % playerNumber, new Point(94, 86));
+                pos = intersectCenter((i + playerNumber - data.myPos) % playerNumber, new Point(200, 86));
                 paintPocker(g2d, new Point(pos.x - 20, pos.y), data.players.get(i).c1, i == data.myPos || data.showAll);
                 paintPocker(g2d, new Point(pos.x + 20, pos.y), data.players.get(i).c2, i == data.myPos || data.showAll);
             } catch (Exception err) {
@@ -301,9 +308,13 @@ class UserInterface implements Runnable {
         out = new DataOutputStream(pipe);
 
         p1 = initializeUI1();
+        p1.setName("p1");
         p2 = initializeUI2();
+        p2.setName("p2");
         p3 = initializeUI3();
+        p3.setName("p3");
         p4 = initializeUI4();
+        p4.setName("p4");
     }
 
     public int calculateMaxBet() {
@@ -325,16 +336,16 @@ class UserInterface implements Runnable {
 
         Component[] c = frame.getContentPane().getComponents();
         for (Component i : c) {
-            if (i == p1) {
-                p1.interactive = false;
-                p1.hide();
-                frame.remove(p1);
+            if (i.getName() != null && i.getName().equals(p1.getName())) {
+                ((DrawComponent) i).interactive = false;
+                i.hide();
+                frame.remove(i);
             }
         }
 
         for (Component i : c) {
-            if (i == p2) {
-                //System.out.println("Already in p2");
+            if (i.getName() != null && i.getName().equals(p2.getName())) {
+                // System.out.println("Already in p2");
                 return;
             }
         }
@@ -448,6 +459,12 @@ class UserInterface implements Runnable {
                             break;
                         }
                     }
+                    Component[] c = frame.getContentPane().getComponents();
+                    for (Component i : c) {
+                        if (i.getName() != null && i.getName().equals("p1")) {
+                            return;
+                        }
+                    }
                     ChangeStatus(p4, p2);
                     //System.out.println("fuck");
                 } else if (data.status == 3) {
@@ -486,32 +503,43 @@ class UserInterface implements Runnable {
         list.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
+                if (e.getClickCount() >= 2) {
+                    System.out.println("Try entering room.");
                     try {
-                        String S = new String(list.getSelectedValue().toCharArray());
-                        int tmp = Integer.parseInt(S.split("#")[1]);
-                        //ChangeStatus(p2, p3);
-                        //System.out.println(tmp);
-                        try {
-                            out.writeInt(tmp);
-                            out.writeInt(-1);
-                        } catch (IOException err) {
-                            System.out.println("Error: Entering room failed.");
-                            System.exit(1);
+                        int index = list.locationToIndex(e.getPoint());
+                        if (index != -1) {
+                            String S = new String(list.getModel().getElementAt(index).toCharArray());
+                            int tmp = Integer.parseInt(S.split("#")[1]);
+                            //ChangeStatus(p2, p3);
+                            //System.out.println(tmp);
+                            try {
+                                out.writeInt(tmp);
+                                out.writeInt(-1);
+                            } catch (IOException err) {
+                                System.out.println("Error: Entering room failed.");
+                                System.exit(1);
+                            }
                         }
                     } catch (NullPointerException err) {
-                        //System.out.println("unexpected null pointer in mouseClicked()");
+                        System.out.println("unexpected null pointer in mouseClicked()");
                     }
                 }
             }
-        });
+        }
+        );
 
         JButton startButton = new JButton("Create A New Room");
+
         startButton.setForeground(bgColor);
-        startButton.setFocusable(false);
+
+        startButton.setFocusable(
+                false);
         startButton.setBackground(foreColor);
-        startButton.setFont(new Font(Font.MONOSPACED, Font.BOLD, 54));
-        startButton.setPreferredSize(new Dimension(200, 100));
+
+        startButton.setFont(
+                new Font(Font.MONOSPACED, Font.BOLD, 54));
+        startButton.setPreferredSize(
+                new Dimension(200, 100));
         startButton.setHorizontalAlignment(SwingConstants.CENTER);
 
         constraints = new GridBagConstraints();
@@ -520,12 +548,16 @@ class UserInterface implements Runnable {
         constraints.weighty = 2.0;
         constraints.insets = new Insets(0, 150, 0, 150);
         constraints.gridwidth = GridBagConstraints.REMAINDER;
+
         drawComponent.add(startButton);
+
         layout.setConstraints(startButton, constraints);
 
-        startButton.addMouseListener(new MouseAdapter() {
+        startButton.addMouseListener(
+                new MouseAdapter() {
             @Override
-            public void mousePressed(MouseEvent e) {
+            public void mousePressed(MouseEvent e
+            ) {
 
                 //ChangeStatus(p2, p3);
                 try {
@@ -535,7 +567,8 @@ class UserInterface implements Runnable {
                     System.exit(1);
                 }
             }
-        });
+        }
+        );
 
         return drawComponent;
     }
